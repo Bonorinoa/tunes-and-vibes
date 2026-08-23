@@ -2,6 +2,16 @@
 
 Living file. Newest first.
 
+## 2026-08-24 — Protocol audit + L5 wired
+
+- Soundness audit done; 7 rulings frozen in `docs/PROTOCOL.md` v1.0 (R1 WHO-5 overlap, R2 ±10pt noise band, R3 valence-floor switch rule, R4 term-calendar covariates, R5 descriptive-only dashboards, R6 HRV z-gate ≥14 nights, R7 status vocabulary).
+- `src/survey.py`: defensive parser (separators, range checks, last-valid-wins upsert by ISO week), strain flag ≤28 pct informational only.
+- Cron deployed via Hermes scheduler (gateway-hosted, survives laptop wake):
+  - `tv-ingest` (2be97cf1ba6e): every 2h at :07, no-agent bash chain, one heartbeat line, exit 0 always.
+  - `tv-digest` (c445e15e0ad1): daily 08:00 → Telegram (WHO-5 trend + latest snapshot).
+  - `tv-who5` (90661dafb8e1): Sunday 08:00 → Telegram, attach_to_session so replies parse in-session; questions-before-data ordering enforced; duplicate-week guard.
+- Watch-off month ends tonight; HRV baseline rebuild ~3 weeks before z-scores unlock (R6).
+
 ## 2026-08-24 — L4 built and passing
 
 - Full chain live: `schema` → `ingest_spotify` → `ingest_garmin` → `enrich_features` → `snapshot`. Idempotency verified (re-run: 0 new / 50 dups).
