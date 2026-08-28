@@ -1,6 +1,5 @@
 # Isolated project venv. Do not install into system Python 3.9.
-pandas>=2.2
-matplotlib>=3.8
+# Runtime only. pandas/matplotlib return when analysis starts (~week 6).
 requests>=2.32
 python-dotenv>=1.0
 spotipy>=2.24

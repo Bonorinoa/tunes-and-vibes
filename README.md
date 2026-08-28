@@ -2,7 +2,7 @@
 
 n=1 panel: weekly WHO-5 + passive Spotify listening + Garmin vivoactive 5.
 
-**Status:** scaffold only. Isolation probes (L0 ReccoBeats, L1 env) passed. L2 Spotify OAuth is next, after secrets land in `.env`. No cron, no agent, no latent model yet.
+**Status:** live fridge. Ingest every 2h (`tv-ingest` on the default Hermes profile), digest 08:15 Telegram, WHO-5 Sunday 08:00. Official WHO-5 series starts Sunday 2026-08-30. The 2026-08-17 row is a labeled test-fire (60/100).
 
 ## What this is
 
@@ -13,7 +13,7 @@ A semester-length personal dataset for the relationship between music and wellbe
 ```
 .env                 secrets (gitignored — you fill this)
 .env.example         same keys, empty
-src/                 ingestion + snapshot render (empty until L2)
+src/                 ingest + snapshot + digest + WHO-5 store
 data/                sqlite + derived tables
 exports/incoming/    drop Spotify ESH + Garmin archive zips here
 scratch/             temp files stay inside the project (approval-gate safe)
@@ -37,6 +37,6 @@ Do not install packages into system Python. Project venv comes with L2.
 - Raw rows are immutable. Cleaning happens downstream.
 - No metric is named an emotion until it survives contact with WHO-5.
 - No daily self-report. PHQ-2 is deferred.
-- Scheduling waits until daily/weekly snapshots work in isolation.
+- Scheduling is live (default-profile cron). Do not duplicate jobs into this profile.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DECISION_LOG.md](docs/DECISION_LOG.md).

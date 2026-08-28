@@ -1,4 +1,7 @@
-"""ReccoBeats enrichment: fill features for new tracks. Static per track -- fetch once."""
+"""ReccoBeats enrichment: fill features for new tracks. Static per track -- fetch once.
+
+Catalog misses are persisted on tracks.not_found so we never retry them.
+"""
 
 from __future__ import annotations
 
@@ -23,9 +26,54 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def pending_ids(con: sqlite3.Connection, limit: int = 300) -> list[str]:
+    return [
+        r[0]
+        for r in con.execute(
+            """SELECT t.track_id FROM tracks t
+               LEFT JOIN features f ON f.track_id = t.track_id
+               WHERE f.track_id IS NULL
+                 AND COALESCE(t.not_found, 0) = 0
+                 AND t.track_id IS NOT NULL
+               LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    ]
+
+
+def mark_not_found(con: sqlite3.Connection, ids: list[str]) -> None:
+    con.executemany(
+        "UPDATE tracks SET not_found=1 WHERE track_id=?",
+        [(i,) for i in ids],
+    )
+
+
+def misses(chunk: list[str], pairs: list[tuple[str, str]]) -> list[str]:
+    found = {sid for sid, _ in pairs}
+    return [sid for sid in chunk if sid not in found]
+
+
+def apply_lookup(
+    con: sqlite3.Connection,
+    chunk: list[str],
+    pairs: list[tuple[str, str]] | None,
+) -> tuple[int, list[tuple[str, str]]]:
+    """Catalog misses persist. Transport failure (pairs is None) retries next poll."""
+    if pairs is None:
+        return len(chunk), []
+    missing = misses(chunk, pairs)
+    if missing:
+        mark_not_found(con, missing)
+    return len(missing), pairs
+
+
 def _get(url: str, **kw) -> dict | None:
     for _ in range(3):
-        resp = requests.get(url, timeout=25, **kw)
+        try:
+            resp = requests.get(url, timeout=25, **kw)
+        except requests.RequestException as exc:
+            print(f"  {type(exc).__name__} on {url}")
+            return None
         if resp.status_code == 200:
             return resp.json()
         if resp.status_code == 429:
@@ -38,16 +86,20 @@ def _get(url: str, **kw) -> dict | None:
     return None
 
 
-def _lookup_ids(con: sqlite3.Connection, ids: list[str]) -> list[tuple[str, str]]:
-    """Batch lookup with adaptive splitting: ReccoBeats 400s on large ID lists."""
+def lookup_ids(ids: list[str]) -> list[tuple[str, str]] | None:
+    """Batch lookup. None = transport failure (retry later); list = catalog result."""
     if not ids:
         return []
     data = _get(f"{API}/track", params={"ids": ",".join(ids)})
-    if data is None and len(ids) > 1:
-        mid = len(ids) // 2
-        return _lookup_ids(con, ids[:mid]) + _lookup_ids(con, ids[mid:])
-    if not data:
-        return []
+    if data is None:
+        if len(ids) > 1:
+            mid = len(ids) // 2
+            left = lookup_ids(ids[:mid])
+            right = lookup_ids(ids[mid:])
+            if left is None and right is None:
+                return None
+            return (left or []) + (right or [])
+        return None
     pairs = []
     for item in data.get("content") or []:
         href = item.get("href") or ""
@@ -60,25 +112,19 @@ def _lookup_ids(con: sqlite3.Connection, ids: list[str]) -> list[tuple[str, str]
 def main() -> int:
     init()
     con = sqlite3.connect(DB)
-    pending = [
-        r[0]
-        for r in con.execute(
-            """SELECT t.track_id FROM tracks t
-               LEFT JOIN features f ON f.track_id = t.track_id
-               WHERE f.track_id IS NULL AND t.track_id IS NOT NULL LIMIT 300"""
-        ).fetchall()
-    ]
+    pending = pending_ids(con)
     print(f"tracks needing features: {len(pending)}")
 
     done = failed = 0
     for i in range(0, len(pending), CHUNK):
         chunk = pending[i : i + CHUNK]
-        pairs = _lookup_ids(con, chunk)
-        failed += len(chunk) - len(pairs)
+        pairs = lookup_ids(chunk)
+        n_miss, pairs = apply_lookup(con, chunk, pairs)
+        failed += n_miss
         for sid, uuid in pairs:
             feats = _get(f"{API}/track/{uuid}/audio-features")
             if not feats:
-                failed += 1
+                failed += 1  # transport/HTTP — retry next poll, not a catalog miss
                 continue
             con.execute(
                 """INSERT INTO features (rb_uuid, track_id, valence, energy, danceability,
@@ -111,8 +157,12 @@ def main() -> int:
     )
     con.commit()
     n_feat, n_val = con.execute("SELECT COUNT(*), COUNT(valence) FROM features").fetchone()
+    n_miss = con.execute("SELECT COUNT(*) FROM tracks WHERE not_found=1").fetchone()[0]
     con.close()
-    print(f"reccobeats: {done} enriched ({failed} failed) · cache {n_feat} tracks ({n_val} w/ valence)")
+    print(
+        f"reccobeats: {done} enriched ({failed} failed) · "
+        f"cache {n_feat} tracks ({n_val} w/ valence) · not_found {n_miss}"
+    )
     return 0
 
 

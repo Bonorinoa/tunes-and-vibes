@@ -1,7 +1,7 @@
 #!/bin/bash
 # Tunes-and-Vibes ingest chain. Designed for no-agent cron: one heartbeat line,
 # never crashes the scheduler. Module failures are visible in the line + log.
-set -u
+set -uo pipefail
 cd "$HOME/Hermes/Projects/tunes-and-vibes" || exit 1
 mkdir -p logs
 PY=./.venv/bin/python

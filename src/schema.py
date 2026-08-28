@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS tracks (
   track_name   TEXT,
   artist_names TEXT,
   first_seen   TEXT,
-  duration_ms  INTEGER
+  duration_ms  INTEGER,
+  not_found    INTEGER DEFAULT 0   -- ReccoBeats catalog miss; never retry
 );
 
 -- ReccoBeats features are static per track: fetch once, never again.
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS features (
   valence REAL, energy REAL, danceability REAL, tempo REAL,
   acousticness REAL, instrumentalness REAL, liveness REAL,
   loudness REAL, speechiness REAL, key INTEGER, mode INTEGER,
+  not_found         INTEGER DEFAULT 0,   -- 1 if ReccoBeats catalog miss
   fetched_at        TEXT
 );
 
@@ -57,6 +59,8 @@ CREATE TABLE IF NOT EXISTS wellness (
   spo2_avg     REAL,
   steps        INTEGER,
   active_kcal  REAL,
+  mod_min      REAL,
+  vig_min      REAL,
   note         TEXT,
   raw_json     TEXT,
   ingested_at  TEXT
@@ -85,11 +89,18 @@ def init(db_path: Path = DB) -> Path:
     db_path.parent.mkdir(exist_ok=True)
     con = sqlite3.connect(db_path)
     con.executescript(DDL)
-    # Self-migration for DBs created before duration_ms existed.
-    try:
-        con.execute("ALTER TABLE tracks ADD COLUMN duration_ms INTEGER")
-    except sqlite3.OperationalError:
-        pass  # column already exists
+    # Self-migration for DBs created before duration_ms / intensity columns / not_found existed.
+    for stmt in (
+        "ALTER TABLE tracks ADD COLUMN duration_ms INTEGER",
+        "ALTER TABLE tracks ADD COLUMN not_found INTEGER DEFAULT 0",
+        "ALTER TABLE wellness ADD COLUMN mod_min REAL",
+        "ALTER TABLE wellness ADD COLUMN vig_min REAL",
+        "ALTER TABLE features ADD COLUMN not_found INTEGER DEFAULT 0",
+    ):
+        try:
+            con.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     con.execute("PRAGMA journal_mode=WAL")
     con.commit()
     con.close()

@@ -31,12 +31,39 @@ def _box(title: str, lines: list[str]) -> str:
 
 
 def _fmt(v, suffix="") -> str:
-    return ("—" if v is None else f"{v:g}{suffix}")
+    if v is None:
+        return "—"
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return f"{v}{suffix}"
+    return f"{v:g}{suffix}"
 
 
 def f2(v) -> str:
     """Fixed two decimals or em-dash."""
     return "—" if v is None else f"{v:.2f}"
+
+
+def _sleep_clock(sleep) -> str:
+    if sleep is None:
+        return "—"
+    hh, mm = divmod(int(sleep), 60)
+    return f"{hh}h {mm:02d}m"
+
+
+def _stress_label(stress) -> str:
+    if stress is None or (isinstance(stress, (int, float)) and not isinstance(stress, bool) and stress < 0):
+        return "—"
+    return _fmt(stress)
+
+
+def _steps_label(steps, stress) -> str:
+    """0 steps + missing/sentinel stress = day stats not in yet, not a true zero."""
+    if steps == 0 and (
+        stress is None
+        or (isinstance(stress, (int, float)) and not isinstance(stress, bool) and stress < 0)
+    ):
+        return "—"
+    return _fmt(steps)
 
 
 def daily(con: sqlite3.Connection, day: str | None = None) -> str:
@@ -51,12 +78,12 @@ def daily(con: sqlite3.Connection, day: str | None = None) -> str:
         (_st, sleep, rem, rhr, rhr7, hrv, hrvs, bbc, bbd, stress, steps) = wrow
         st = wrow[0]
         if st == "collected":
-            hh, mm = divmod(int(sleep or 0), 60)
             lines.append(f"GARMIN ({st})")
-            lines.append(f" Sleep     {hh}h {mm:02d}m · REM {_fmt(rem, 'm')}")
-            lines.append(f" HRV       {_fmt(hrv)}ms [{_fmt(hrvs)}] · RHR {_fmt(rhr)} (7d {_fmt(rhr7)})")
-            lines.append(f" Battery   +{_fmt(bbc)} / -{_fmt(bbd)} · stress avg {_fmt(stress)}")
-            lines.append(f" Steps     {_fmt(steps)}")
+            hrv_label = "—" if not hrvs or str(hrvs).upper() == "NONE" else str(hrvs)
+            lines.append(f" Sleep     {_sleep_clock(sleep)} · REM {_fmt(rem, 'm')}")
+            lines.append(f" HRV       {_fmt(hrv)}ms [{hrv_label}] · RHR {_fmt(rhr)} (7d {_fmt(rhr7)})")
+            lines.append(f" Battery   +{_fmt(bbc)} / -{_fmt(bbd)} · stress avg {_stress_label(stress)}")
+            lines.append(f" Steps     {_steps_label(steps, stress)}")
         else:
             lines.append(f"GARMIN: {st}" + (f" — see ingest_log" if st == "api_error" else ""))
     else:
@@ -69,20 +96,24 @@ def daily(con: sqlite3.Connection, day: str | None = None) -> str:
         """SELECT COUNT(*), COALESCE(SUM(COALESCE(t.duration_ms, 210000)), 0),
                   SUM(CASE WHEN p.track_id IS NULL THEN 1 ELSE 0 END),
                   COUNT(DISTINCT p.artist_names),
-                  AVG(f.valence), AVG(f.energy)
+                  AVG(f.valence), AVG(f.energy), COUNT(f.valence)
            FROM plays p
            LEFT JOIN tracks t ON t.track_id = p.track_id
            LEFT JOIN features f ON f.track_id = p.track_id
            WHERE p.played_at >= ? AND p.played_at < ?""",
         (start_utc.isoformat().replace("+00:00", "Z"), end_utc.isoformat().replace("+00:00", "Z")),
     ).fetchone()
-    n_plays, total_ms, n_pod, n_artists, val, ene = prow
+    n_plays, total_ms, n_pod, n_artists, val, ene, n_feat = prow
     if n_plays:
         mins = int((total_ms or 0) / 60000)
         pod_share = (n_pod / n_plays * 100) if n_plays else 0
         lines.append("")
         lines.append("SPOTIFY")
-        feat_note = f" · valence {f2(val)} · energy {f2(ene)}" if val is not None else ""
+        feat_note = (
+            f" · valence {f2(val)} ({n_feat}/{n_plays}) · energy {f2(ene)}"
+            if val is not None
+            else ""
+        )
         lines.append(f" ~{mins} min · {n_plays} plays{feat_note} · podcasts {pod_share:.0f}%")
         top = con.execute(
             """SELECT artist_names, COUNT(*) c FROM plays
@@ -95,6 +126,16 @@ def daily(con: sqlite3.Connection, day: str | None = None) -> str:
     else:
         lines.append("")
         lines.append("SPOTIFY: no plays recorded this local day")
+        ystart = start_utc - timedelta(days=1)
+        yn = con.execute(
+            "SELECT COUNT(*) FROM plays WHERE played_at >= ? AND played_at < ?",
+            (
+                ystart.isoformat().replace("+00:00", "Z"),
+                start_utc.isoformat().replace("+00:00", "Z"),
+            ),
+        ).fetchone()[0]
+        if yn:
+            lines.append(f" (yesterday: {yn} plays)")
     return _box(f"DAILY PANEL · {day}", lines)
 
 
@@ -132,7 +173,7 @@ def weekly(con: sqlite3.Connection) -> str:
     prow = con.execute(
         """SELECT COUNT(*),
                   COALESCE(SUM(COALESCE(t.duration_ms, 210000)), 0),
-                  AVG(f.valence), AVG(f.energy),
+                  AVG(f.valence), AVG(f.energy), COUNT(f.valence),
                   SUM(CASE WHEN p.track_id IS NULL THEN 1 ELSE 0 END)
            FROM plays p
            LEFT JOIN tracks t ON t.track_id = p.track_id
@@ -140,14 +181,14 @@ def weekly(con: sqlite3.Connection) -> str:
            WHERE p.played_at >= ?""",
         (start_utc.isoformat().replace("+00:00", "Z"),),
     ).fetchone()
-    n, total_ms, val, ene, pods = prow
+    n, total_ms, val, ene, n_feat, pods = prow
     if n:
         hrs = (total_ms or 0) / 3_600_000
         pod_pct = (pods / n * 100) if pods else 0
         lines.append(
             f"MUSIC   {hrs:.1f}h · valence {f2(val)} · energy {f2(ene)}  [reccobeats_derived]"
         )
-        lines.append(f"        {n} plays · podcasts {pod_pct:.0f}%")
+        lines.append(f"        {n} plays · features {n_feat}/{n} · podcasts {pod_pct:.0f}%")
         arts = con.execute(
             "SELECT COUNT(DISTINCT artist_names) FROM plays WHERE played_at >= ?",
             (start_utc.isoformat().replace("+00:00", "Z"),),

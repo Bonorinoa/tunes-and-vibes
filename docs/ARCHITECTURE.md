@@ -1,12 +1,12 @@
 # Architecture
 
-Three planes. Only plane 1 is in scope until snapshots render from real rows.
+Three planes. Plane 1 is live. Planes 2–3 wait for archive zips and ≥6–8 weeks of WHO-5.
 
 ## Planes
 
 1. **Live feed** — Spotify `GET /me/player/recently-played` (≤50 items) + Garmin Connect via `garth`/`garminconnect`. Local SQLite. Idempotent append, dedupe on natural keys.
 2. **Archive** — one-time Spotify Extended Streaming History + Garmin account export. Fuzzy join on artist+title; label match confidence; never silently drop.
-3. **Anchor** — WHO-5, all-day Sunday, one-line reply `4 4 3 4 5`. Questions before any digest numbers (no anchoring). Telegram is the intended delivery surface; wiring is deferred until isolation works.
+3. **Anchor** — WHO-5, all-day Sunday, one-line reply `4 4 3 4 5`. Questions before any digest numbers. Telegram is the delivery surface (no_agent cron). Monday 23:59 is grace for Sunday's week.
 
 ## Feature join
 
@@ -28,11 +28,11 @@ Aggregates report coverage (`hrv 5/7`) and accept NA. Tests punch holes in synth
 | Rung | What | Gate |
 |------|------|------|
 | L0 | ReccoBeats | done |
-| L1 | Python env | system 3.9 missing pandas/requests — project venv at L2 |
-| L2 | Spotify OAuth → recently-played → SQLite | `.env` client id/secret |
-| L3 | Garmin login → one night of sleep/HRV | evening + MFA |
-| L4 | Daily + weekly snapshot from real partial data | L2+L3 |
-| L5 | Telegram + cron + exports ingest | after L4 looks right |
+| L1 | Python env | done · `.venv` |
+| L2 | Spotify OAuth → recently-played → SQLite | done |
+| L3 | Garmin login → one night of sleep/HRV | done |
+| L4 | Daily + weekly snapshot from real partial data | done |
+| L5 | Telegram + cron | done (exports ingest still parked) |
 
 ## Runtime constraints (this Mac)
 
@@ -42,4 +42,4 @@ Aggregates report coverage (`hrv 5/7`) and accept NA. Tests punch holes in synth
 
 ## Not yet
 
-Dedicated Hermes profile/agent, VPS, scheduling, latent models. Stage-2 always-on box only after a pre-committed tripwire (missed Sunday because Mac slept, Spotify window loss, or travel >48h).
+Dedicated Hermes profile exists (`tunes-and-vibes`). Cron stays on the **default** profile. VPS / always-on box only after a pre-committed tripwire (missed Sunday because Mac slept, Spotify window loss, or travel >48h). Latent models deferred to spring / ≥8 anchored weeks.

@@ -24,8 +24,15 @@ ITEMS = [
 
 
 def week_start(d: date | None = None) -> str:
-    """ISO Monday of the week containing d (default: today, local)."""
+    """ISO Monday of the WHO-5 administration week.
+
+    Sunday's instrument belongs to that ISO week. Monday is grace for
+    Sunday's administration, so it pins to the previous ISO Monday.
+    Tuesday–Saturday use the ISO week containing d.
+    """
     d = d or date.today()
+    if d.isoweekday() == 1:  # Monday grace → Sunday's week
+        d = d - timedelta(days=1)
     return (d - timedelta(days=d.isoweekday() - 1)).isoformat()
 
 
@@ -46,19 +53,28 @@ def parse_reply(text: str) -> tuple[list[int] | None, str]:
     return items, ""
 
 
-def store(items: list[int], channel: str = "manual") -> dict:
-    init()
-    ws = week_start()
+def store(
+    items: list[int],
+    channel: str = "manual",
+    *,
+    db_path: Path | None = None,
+    on: date | None = None,
+    note: str | None = None,
+) -> dict:
+    path = db_path or DB
+    init(path)
+    ws = week_start(on)
     total = sum(items)
-    con = sqlite3.connect(DB)
+    con = sqlite3.connect(path)
     con.execute(
         """INSERT INTO survey (week_start, responded_at, i1, i2, i3, i4, i5,
-                               raw_total, pct, channel)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               raw_total, pct, channel, note)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(week_start) DO UPDATE SET
              responded_at=excluded.responded_at, i1=excluded.i1, i2=excluded.i2,
              i3=excluded.i3, i4=excluded.i4, i5=excluded.i5,
-             raw_total=excluded.raw_total, pct=excluded.pct, channel=excluded.channel""",
+             raw_total=excluded.raw_total, pct=excluded.pct,
+             channel=excluded.channel, note=excluded.note""",
         (
             ws,
             datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -66,6 +82,7 @@ def store(items: list[int], channel: str = "manual") -> dict:
             total,
             total * 4,
             channel,
+            note,
         ),
     )
     con.commit()
@@ -76,9 +93,19 @@ def store(items: list[int], channel: str = "manual") -> dict:
     return {"week_start": got[0], "pct": got[1], "raw_total": total}
 
 
+def store_reply(text: str, channel: str = "telegram", *, db_path: Path | None = None,
+                on: date | None = None) -> dict | None:
+    """Parse a free-text reply and upsert. None if unusable."""
+    items, issue = parse_reply(text)
+    if items is None:
+        return None
+    return store(items, channel, db_path=db_path, on=on, note=f"parsed from {channel}: {text.strip()}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--store", help="reply text, e.g. \"4 4 3 4 5\"")
+    ap.add_argument("--store", help='reply text, e.g. "4 4 3 4 5"')
+    ap.add_argument("--channel", default="manual")
     ap.add_argument("--items", action="store_true", help="print the five WHO-5 items")
     args = ap.parse_args()
     if args.items or not args.store:
@@ -90,7 +117,7 @@ def main() -> int:
         if items is None:
             print(f"REJECTED: {issue}")
             return 1
-        res = store(items)
+        res = store(items, channel=args.channel)
         flag = ""
         if res["pct"] < 28:
             flag = " · STRAIN FLAG (≤28) — informational, not diagnostic"

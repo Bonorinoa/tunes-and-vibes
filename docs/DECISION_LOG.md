@@ -2,6 +2,48 @@
 
 Living file. Newest first.
 
+## 2026-08-27 — foundation audit punch list (landed)
+
+Intent before compute: keep the fridge, no new metrics. Commit the uncommitted 0.1.2 scar tissue (last-good Garmin, digest-from-SQLite, ReccoBeats `not_found`, tests) plus three correctness patches before Sunday's first official WHO-5.
+
+1. **Monday grace** — `survey.week_start` on Monday pinned to the previous ISO Monday so a 31 Aug reply stores as week `2026-08-24`.
+2. **Renderer honesty** — missing sleep is `—` not `0h 00m`; Garmin `avg_stress < 0` and morning `steps=0` with sentinel stress display as NA; valence prints ReccoBeats join coverage `n/N`.
+3. **ReccoBeats transport ≠ catalog miss** — timeouts/connection resets retry next poll; lookup misses still persist on `tracks.not_found`.
+4. **`ingest_all.sh` `pipefail`** — heartbeat `spotify(r)/garmin(r)/feats(r)` is the module exit, not `tail`'s 0.
+
+No new streams, no `weekly` table, no pandas, no latent model. Analysis gate remains ≥6–8 weeks.
+
+## 2026-08-26 — diagnose + patch morning digest (intent before compute)
+
+Telegram 08:00 digest showed `GARMIN: api_error` and almost no useful daily panel. Forensics (do not recompute panel metrics until patches land):
+
+1. **Transient Garmin timeout clobbered a good row.** 06:29 MST `GarminConnectConnectionError` (15s read timeout) upserted `api_error` + NULLs over the 04:41 `collected` row (sleep 483, HRV 80, RHR 43). Tokens are fine: 34 collected vs 2 timeouts. 08:07 recovered the data — seven minutes *after* the digest.
+2. **Digest schedule is 7 min before ingest.** `tv-digest` `0 8 * * *` cats `logs/latest_snapshot.txt` written by `tv-ingest` `7 */2 * * *`. The 08:00 message is always the 06:29 snapshot.
+3. **Snapshot renderer crashes on vendor strings.** `hrv_status='NONE'` (baseline not ready) goes through `_fmt` `:g` → Tuesday's digest was a traceback.
+4. **Steps parser looks for the wrong key.** Garmin `get_stats` returns `totalSteps` (Aug 24 raw = 13409), never `steps`. Every day stored 0. `raw_json[:20000]` also drops the stats object once sleep is present, so later days cannot be re-parsed from disk.
+5. **Spotify "no plays this local day" at 08:00** was mostly clock, not loss: overnight plays are previous local day; 06:58 MST plays landed at 08:07.
+
+Intent: (a) never overwrite a substantive wellness row with transient `api_error`; (b) `_fmt` accepts strings; parse `totalSteps` + intensity minutes; compact `raw_json`; (c) digest regenerates the snapshot and prints a 4-day status strip; move digest to 08:15. ReccoBeats 109-miss retry storm parked for a follow-up — not what the user saw.
+
+**Landed same morning.** 9/9 unittest. Live pull: today steps 385 (morning), sleep 483 / HRV 80 kept. Backfill: Aug 24 13409 steps from raw; Aug 25 live 13422 steps / 547 sleep. Digest body verified locally. `tv-digest` now 08:15 → `scripts/daily_digest.sh`.
+
+## 2026-08-24 — tv-who5 delivery debugged; Plan C shipped
+
+Four manual-fire tests to get the Sunday instrument delivering:
+
+| # | Config | Result |
+|---|---|---|
+| 1 | unpinned model | empty response, 0 API calls |
+| 2 | stealth/ox-alpha @ nous | empty content ×3 retries (works in interactive sessions only) |
+| 3 | deepseek-v4-flash-0731 @ nous | HTTP 404 — slug resolved against OpenRouter, doesn't exist there |
+| 4 | google/gemma-4-26b-a4b-it:free @ openrouter | HTTP 404 — account privacy/guardrail settings filter all endpoints |
+
+**Root cause layers:** (a) cron jobs resolve models in fresh sessions and silently fall through to OpenRouter unless pinned; (b) user's OpenRouter privacy settings currently block free-tier endpoints entirely.
+
+**Resolution:** job converted to **no_agent** (`scripts: tv_who5_survey.sh`) — survey text delivered verbatim to Telegram, zero LLM in the delivery path. Trade-offs accepted: duplicate-week guard lost (mitigated: `survey.py` upserts by ISO week, last-valid-wins); reply parsing moves to the live home-channel session, where models provably work.
+
+**Action item surfaced:** EconLLM writers (Wed 09:00/09:05) use the exact gemma:free combo that just 404'd. Last OK run Aug 19. Check openrouter.ai/settings/privacy before Wednesday or expect writer failures.
+
 ## 2026-08-24 — Protocol audit + L5 wired
 
 - Soundness audit done; 7 rulings frozen in `docs/PROTOCOL.md` v1.0 (R1 WHO-5 overlap, R2 ±10pt noise band, R3 valence-floor switch rule, R4 term-calendar covariates, R5 descriptive-only dashboards, R6 HRV z-gate ≥14 nights, R7 status vocabulary).
