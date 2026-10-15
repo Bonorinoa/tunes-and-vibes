@@ -31,6 +31,19 @@ docs/                architecture, decisions, open questions
 
 Do not install packages into system Python. Project venv comes with L2.
 
+## Run & verify
+
+Use the project venv, never system Python:
+
+```bash
+./.venv/bin/python -m unittest discover -s tests -v   # verification: full suite
+scripts/ingest_all.sh                                  # pull Spotify + Garmin
+./.venv/bin/python src/snapshot.py                     # daily/weekly snapshot
+./.venv/bin/python src/board.py                        # coverage board → logs/board.html
+```
+
+Scheduling is live on the default Hermes profile (`tv-ingest` every 2h, `tv-digest` 10:15, `tv-who5` Sunday 10:00) — do not duplicate those jobs into this profile.
+
 ## Hard rules
 
 - Missing data is a status, never a crash.
