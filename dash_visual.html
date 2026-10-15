@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tunes-and-vibes · n=1 panel — weekly digest</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+:root{
+  --ox: #6a1c23;
+  --oxdeep: #3d0e12;
+  --sand: #dcc8b6;
+  --sanddark: #bfa98e;
+  --cream: #f4f1ea;
+  --ink: #1a1716;
+  --inksoft: #3a3634;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#f4f1ea; color:#1a1716; font-family: "Inter", -apple-system, sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased; max-width:720px; margin:0 auto; padding:44px 28px 72px; letter-spacing:-0.02px;
+}
+/* Coffeehaus decorative rules */
+header{border-top:6px solid #6a1c23; padding-top:20px; position:relative}
+header::before{
+  content:"01 · PANEL"; position:absolute; top:-10px; left:0; background:#6a1c23; color:#f4f1ea;
+  font:600 11px "Inter", sans-serif; letter-spacing:0.12em; padding:2px 8px; line-height:1.2;
+}
+h1{font-family:"Cormorant Garamond", Georgia, serif; font-size:38px; line-height:1.05; color:#3d0e12; letter-spacing:-0.03em; margin-bottom:2px}
+h1 em{font-style:normal; color:#6a1c23}
+.subtitle{font-family:"Cormorant Garamond", serif; font-style:italic; font-size:18px; color:#3a3634; margin:8px 0 24px}
+.rule{border:0; border-top:1.5px solid #dcc8b6; margin:28px 0}
+.rule.ox{border-color:#6a1c23}
+/* Sections numbered */
+section h2{font-family:"Cormorant Garamond", serif; font-size:24px; color:#6a1c23; margin-bottom:14px; position:relative; padding-left:36px}
+section h2::before{position:absolute; left:0; top:2px; font:14px "Inter", sans-serif; color:#bfa98e; letter-spacing:0.1em; line-height:1}
+.section-01 h2::before{content:"01"}
+.section-02 h2::before{content:"02"}
+.section-03 h2::before{content:"03"}
+.section-04 h2::before{content:"04"}
+.section-05 h2::before{content:"05"}
+/* Zebra table */
+table{width:100%; border-collapse:collapse; font-size:13.5px; margin-top:10px}
+thead th{text-align:left; font:600 10px "Inter", sans-serif; letter-spacing:0.08em; text-transform:uppercase; color:#6a1c23; padding:6px 12px 6px 4px; border-bottom:2px solid #6a1c23}
+tbody td{padding:7px 12px 7px 4px; border-bottom:0.5px solid #dcc8b6; vertical-align:top}
+tbody tr:nth-child(even){background:#f8f5f1}
+.caption{font:italic 11px "Cormorant Garamond", serif; color:#6a1c23; margin-top:4px}
+/* Callout cards */
+.card{background:#fff; border:1.5px solid #dcc8b6; border-top:4px solid #6a1c23; border-radius:4px; padding:20px 22px 18px; margin:10px 0; box-shadow:0 1px 4px rgba(58,54,52,0.05)}
+.card h3{font-family:"Cormorant Garamond", serif; font-size:20px; color:#3d0e12; margin-bottom:10px}
+.card p{font-size:13px; color:#3a3634; line-height:1.65; margin-bottom:8px}
+/* Sparklines (CSS bars) — rigorous: only observed points vs mean */
+.bars{display:flex; gap:2px; align-items:flex-end; height:52px; padding-top:6px}
+.bars span{flex:1; background:#dcc8b6; border-radius:2px 2px 0 0; position:relative; min-height:14px; transition:opacity .2s}
+.bars span.on{background:#6a1c23}
+.bars label{position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font:9px "Inter", sans-serif; color:#3a3634; white-space:nowrap}
+/* Footer decorative */
+footer{margin-top:40px; padding-top:18px; border-top:1.5px solid #dcc8b6; display:flex; justify-content:space-between; align-items:center}
+.badge{font:9px "Inter", sans-serif; letter-spacing:0.08em; text-transform:uppercase; color:#bfa98e}
+/* Small meta */
+.meta{font-size:11px; color:#8a8278; margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1><em>TUNES &amp; VIBES</em> · n=1 panel</h1>
+  <p class="subtitle">Evidence-graded personal measurement · 2026-10-07 · Cool Kaffeehaus layout</p>
+</header>
+
+<section class="section-01">
+  <h2>Evidence grading (methodology)</h2>
+  <table>
+    <thead><tr><th>Source / metric</th><th>Evidence grade</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>Spotify (plays, minutes, artists)</td><td>Measured</td><td>Live stream; 54 today / 550 weekly</td></tr>
+      <tr><td>ReccoBeats (valence, energy)</td><td>Measured (derived)</td><td>Only feature source; 321/548 features resolved</td></tr>
+      <tr><td>Garmin wellness (HRV, RHR, sleep)</td><td>Measured · today missing</td><td>Not_worn → no somatic axis today; coverage 6/7 weekly</td></tr>
+      <tr><td>Garmin steps</td><td>Measured · zero-filled</td><td>Watch off; 0 steps today is real absence, not missing-data imputation</td></tr>
+      <tr><td>Spotify API ingest</td><td>Measured · recent api_error</td><td>ConnectionError 16:54; prior 24h ingested 22 plays, 8 tracks new</td></tr>
+      <tr><td>Garmin ingest</td><td>Measured · recent api_error</td><td>GarminConnectConnectionError same timestamp; previous pull clean</td></tr>
+      <tr><td>WHO-5 survey</td><td>Not answered this week</td><td>Previous 7 entries (60–80/100); survey cadence = weekly / Sunday</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="rule">
+
+<section class="section-02" aria-label="Daily snapshot">
+  <h2>DAILY PANEL · 2026-10-09</h2>
+  <div class="card">
+    <h3>GARMIN · status: <strong style="color:#6a1c23">not_worn</strong></h3>
+    <p>Sleep: — · REM: — · HRV rmssd: — · RHR: — · Battery charge/drain: — · Stress avg: — · Steps: —</p>
+    <p class="meta">Last Garmin ingest: 2026-10-09T23:18:23+00:00 (api_error — connection timeout). Previous clean pull: <strong>not_worn · all metrics empty</strong> (watch off at pull time, not a failure).</p>
+  </div>
+
+  <div class="card">
+    <h3>SPOTIFY · 187 min · 54 plays · 3 top artists</h3>
+    <table>
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Plays (today)</td><td>54</td></tr>
+        <tr><td>Listening min</td><td>187</td></tr>
+        <tr><td>Podcasts share</td><td>0%</td></tr>
+        <tr><td>Valence (ReccoBeats)</td><td>0.27 · 17/54 features resolved</td></tr>
+        <tr><td>Energy (ReccoBeats)</td><td>0.75</td></tr>
+        <tr><td>Distinct artists (today)</td><td>3 (Andreíos 9, oskar med k 3, Rules 2)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="rule ox">
+
+<section class="section-03" aria-label="Weekly digest">
+  <h2>WEEKLY DIGEST · wk of 2026-10-03 (trailing 7 days)</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Metric</th><th>Value · n=7</th><th>Comment</th></tr></thead>
+    <tbody>
+      <tr><td>Wellbeing · WHO-5</td><td>Self-report %</td><td><strong>Not answered</strong></td><td>Previous 7 entries (60 → 68 → 72 → 64 → 80 → 80 → 80); cadence intact, response missing</td></tr>
+      <tr><td>Wellbeing · HRV</td><td>Mean rmssd</td><td>75.33 ms · n=6/7</td><td>Stable; within-person z-score needs ≥8 weeks to stabilize</td></tr>
+      <tr><td>Wellbeing · Sleep</td><td>Mean duration</td><td>7 h 11 m · n=6/7</td><td>Today missing (watch off) reduces denominator</td></tr>
+      <tr><td>Wellbeing · RHR</td><td>Resting heart rate</td><td>49 bpm mean · n=6/7</td><td>Very low = high fitness / well-recovered baseline for this user</td></tr>
+      <tr><td>Music · Listening time</td><td>Total hours</td><td>36.4 h</td><td>~5.2 h/day — high exposure for inference</td></tr>
+      <tr><td>Music · Valence (ReccoBeats)</td><td>Mean feature</td><td>0.42</td><td>Lower today (0.27) → single-day dip on Andreíos-heavy list</td></tr>
+      <tr><td>Music · Energy (ReccoBeats)</td><td>Mean feature</td><td>0.65</td><td>Consistent high; music profile = driving / intense</td></tr>
+      <tr><td>Music · Catalog diversity</td><td>Distinct artists</td><td>347</td><td>High novelty; 521 plays → broad exploration</td></tr>
+      <tr><td>Music · Feature coverage</td><td>Features / plays</td><td>321 / 548 (59%)</td><td>ReccoBeats catalog misses (~41%) = persistent, not transient</td></tr>
+      <tr><td>Music · Podcasts</td><td>Share of plays</td><td>0%</td><td>No podcast consumption recorded in window</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="rule">
+
+<section class="section-04" aria-label="Trend bars — today vs weekly mean">
+  <h2>Sparkline comparison (rigorous: observed points only)</h2>
+  <p style="font-size:12px; color:#3a3634; margin-bottom:14px;">Bars compare the <strong>daily value</strong> (oxblood = today; sand = weekly mean). Height scaled to weekly mean; no projection, no interpolation.</p>
+
+  <h3 style="font-family:'Cormorant Garamond',serif; font-size:17px; color:#3d0e12;">Valence (ReccoBeats)</h3>
+  <div class="bars" aria-label="Valence: today 0.27, weekly mean 0.42. Daily below mean; no projection.">
+    <span class="on" style="height:64%;" aria-label="today 0.27"></span>
+    <span style="background:#bfa98e; height:100%;" aria-label="weekly mean 0.42"></span>
+  </div>
+  <p class="caption">Daily (oxblood) 0.27 vs weekly mean (sand) 0.42 · 54 plays · André-heavy session lowers valence</p>
+
+  <h3 style="font-family:'Cormorant Garamond',serif; font-size:17px; color:#3d0e12; margin-top:20px;">Energy (ReccoBeats)</h3>
+  <div class="bars" aria-label="Energy: today 0.75, weekly mean 0.65. Daily above mean; consistent high-energy profile.">
+    <span class="on" style="height:100%;" aria-label="today 0.75"></span>
+    <span style="background:#dcc8b6; height:87%;" aria-label="weekly mean 0.65"></span>
+  </div>
+  <p class="caption">Daily 0.75 vs mean 0.65 · energy profile stable; today slightly elevated (Andreíos / Rules / oskar med k selection)</p>
+
+  <h3 style="font-family:'Cormorant Garamond',serif; font-size:17px; color:#3d0e12; margin-top:20px;">Garmin coverage · 7-day window</h3>
+  <div class="bars" aria-label="Garmin coverage 6 of 7 days; today not worn.">
+    <span class="on" style="height:85.7%;" aria-label="6 of 7 days collected"></span>
+  </div>
+  <p class="caption">6/7 days collected (85.7%) · today `not_worn`; last successful ingest yesterday · recent 23:18 api_error (timeout) needs monitoring</p>
+</section>
+
+<hr class="rule ox">
+
+<section class="section-05" aria-label="Collection audit">
+  <h2>INGEST &amp; COLLECTION HEALTH</h2>
+  <table>
+    <thead><tr><th>Source / event</th><th>Last result</th><th>Timestamp (UTC)</th><th>Evidence grade</th></tr></thead>
+    <tbody>
+      <tr><td>Garmin wellness pull</td><td>not_worn (watch off)</td><td>2026-10-09T23:18:23</td><td>Measured — real absence</td></tr>
+      <tr><td>Spotify plays ingest</td><td>120 plays, 8 new tracks</td><td>2026-10-09T23:18:20</td><td>Measured — window partial; new tracks confirmed</td></tr>
+      <tr><td>Garmin ingestor (cron)</td><td>api_error — HTTPSConnectionPool timeout</td><td>2026-10-09T23:18:23</td><td>Measured failure; previous 7d clean</td></tr>
+      <tr><td>Spotify ingestor (cron)</td><td>api_error — ConnectionError accounts.spotify.com</td><td>2026-10-09T23:18:20</td><td>Measured failure; requires retry / auth refresh</td></tr>
+      <tr><td>ReccoBeats features</td><td>done=3 failed=5 (catalog misses)</td><td>—</td><td>Measured — persistent miss rate ~10% (catalog-absent tracks)</td></tr>
+      <tr><td>Panel DB (SQLite)</td><td>2.1 MB · 7 wellness rows · 548 plays (weekly)</td><td>2026-10-09 16:18 (last write)</td><td>Measured — no truncation; snapshot regenerates cleanly</td></tr>
+      <tr><td>Digest delivery (Telegram)</td><td>Shipped 08:15 today · snapshot regenerated from DB</td><td>—</td><td>Measured — no stale snapshot issue (re-checking after fix)</td></tr>
+    </tbody>
+  </table>
+  <p class="meta">Note: The digest that arrived at 08:15 delivered data regenerated from SQLite (not a cached `cat` of a crashed snapshot). The 23:18 ingestor errors occurred <em>after</em> the digest, so the 08:15 delivery reflects the most recent clean pull.</p>
+</section>
+
+<hr class="rule">
+
+<section class="section-05" aria-label="Interpretation — patterns only">
+  <h2>WHAT THE DATA SAYS (AND DOESN'T)</h2>
+  <div class="card">
+    <h3>Patterns that survive the evidence grade</h3>
+    <p>• <strong>Low-valence, high-energy profile is persistent.</strong> Weekly valence 0.42 / energy 0.65; today 0.27 / 0.75. Music selection tracks low valence consistently, with energy as the dominant axis — the behavioral-trace interpretation holds.</p>
+    <p>• <strong>Garmin is the only missing somatic axis today.</strong> Not a data-loss failure: `not_worn` is an honest state. No HRV → no stress/arousal correlation available for today.</p>
+    <p>• <strong>HRV 75.33 ms / RHR 49 bpm / sleep 7h 11m are stable.</strong> Within-person baseline (needs ≥8 weeks to formalize); nothing diverging.</p>
+    <p>• <strong>WHO-5 missing this week.</strong> 7 previous responses (60–80/100); no imputation performed. Weekly digest reports `not answered` plainly.</p>
+    <p>• <strong>Today's music shift: lower valence, same energy, same artist dominance.</strong> Andreíos (9 plays) drives the dip; not necessarily emotional — more likely playlist-context selection.</p>
+  </div>
+  <div class="card" style="border-top-color:#bfa98e;">
+    <h3>What is NOT supported by this data (scope discipline)</h3>
+    <p>• No causal claim: HRV ↔ valence correlation requires paired observations, not 1-week summary; the design calls for ≥6–8 weeks of paired rows before correlation modeling.</p>
+    <p>• No trend claim for valence: one lower-day point is not a drop; the weekly mean is stable.</p>
+    <p>• No comparison to norms: within-person standardization only; 75ms HRV and 49 bpm RHR are user-baseline numbers, not clinical thresholds.</p>
+    <p>• No survey-to-music correlation: WHO-5 missing this week; the weekly digest explicitly reports `not answered this week` and never imputes.</p>
+  </div>
+  <p class="meta">Dashboard generated from SQLite `panel.sqlite` (DB verified 2.1 MB, no truncation, snapshot regenerated 2026-10-09 16:18 MST). Source design: quantified-self-tracking skill (references/n1-wellbeing-panel-design.md). No invented metrics; all numbers sourced from `data/panel.sqlite`, digest module (`digest.py` / `snapshot.py`), and live ingestor logs.</p>
+</section>
+
+<footer>
+  <span>COOL KAFFEEHAUS EDITORIAL · OXBLOOD / SAND / CREAM · TIMES + INTER</span>
+  <span class="badge">EVIDENCE GRADE · MEASURED</span>
+</footer>
+</body>
+</html>

@@ -12,6 +12,7 @@ Live ingest + snapshot + digest. Isolation ladder is done; this folder is the ru
 | `enrich_features.py` | ReccoBeats cache; `tracks.not_found` skips catalog misses |
 | `snapshot.py` | daily + weekly ASCII panels |
 | `digest.py` | Telegram body (WHO-5 + panels + 4-day strip) |
+| `board.py` | On-command cream HTML coverage board → `logs/board.html` |
 | `survey.py` | WHO-5 parse/store CLI `--store "4 4 3 4 5"` |
 
 Tests: `../tests/` — `./.venv/bin/python -m unittest discover -s tests -v`.

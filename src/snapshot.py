@@ -16,25 +16,36 @@ ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data" / "panel.sqlite"
 LOCAL_TZ = ZoneInfo("America/Phoenix")
 
-W = 62  # panel width
+W = 62  # panel width (kept for back-compat; not used in telegram output)
 
 
 def _box(title: str, lines: list[str]) -> str:
-    def _clip(s: str) -> str:
-        return s if len(s) <= W - 4 else s[: W - 7] + "…"
-
-    out = [f"┌─ {title} ".ljust(W - 1, "─") + "┐"]
+    """Plain section header + body. Telegram-friendly: no box-drawing chars,
+    no line clipping. Each non-empty `line` becomes a bullet; leading-space
+    convention from the caller is preserved (1 space = nested under a
+    category label)."""
+    out = [f"**{title}**"]
     for ln in lines:
-        out.append(("│ " + _clip(ln)).ljust(W - 1) + "│")
-    out.append("└" + "─" * (W - 2) + "┘")
+        s = ln.lstrip()
+        if not s:
+            continue
+        # If caller already prefixed a bullet, keep their alignment; else add ours.
+        if s.startswith("•"):
+            indent = len(ln) - len(s)
+            out.append(" " * indent + s)
+        else:
+            indent = len(ln) - len(s)
+            out.append((" " * indent) + f"• {s}")
     return "\n".join(out)
 
 
-def _fmt(v, suffix="") -> str:
+def _fmt(v, suffix=""):
     if v is None:
         return "—"
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return f"{v}{suffix}"
+    if suffix == "" and isinstance(v, float):
+        return f"{v:.2f}".rstrip("0").rstrip(".")
     return f"{v:g}{suffix}"
 
 
@@ -114,7 +125,9 @@ def daily(con: sqlite3.Connection, day: str | None = None) -> str:
             if val is not None
             else ""
         )
-        lines.append(f" ~{mins} min · {n_plays} plays{feat_note} · podcasts {pod_share:.0f}%")
+        lines.append(
+            f"  • ~{mins} min · {n_plays} plays{feat_note} · podcasts {pod_share:.0f}%"
+        )
         top = con.execute(
             """SELECT artist_names, COUNT(*) c FROM plays
                WHERE played_at >= ? AND played_at < ? AND artist_names IS NOT NULL
@@ -122,7 +135,7 @@ def daily(con: sqlite3.Connection, day: str | None = None) -> str:
             (start_utc.isoformat().replace("+00:00", "Z"), end_utc.isoformat().replace("+00:00", "Z")),
         ).fetchall()
         if top:
-            lines.append(" Top: " + " · ".join(f"{a.split(',')[0]} ×{c}" for a, c in top))
+            lines.append("  • Top: " + " · ".join(f"{a.split(',')[0]} ×{c}" for a, c in top))
     else:
         lines.append("")
         lines.append("SPOTIFY: no plays recorded this local day")
@@ -163,9 +176,10 @@ def weekly(con: sqlite3.Connection) -> str:
             if hrvs else f"HRV     no data · coverage {len(got)}/{len(days)}"
         )
         if sleeps:
-            lines.append(f"SLEEP   mean {_fmt(sum(sleeps)/len(sleeps), 'm')} · n={len(sleeps)}/{len(days)}")
+            hh, mm = divmod(int(sum(sleeps) / len(sleeps)), 60)
+            lines.append(f"SLEEP   mean {hh}h {mm:02d}m · n={len(sleeps)}/{len(days)}")
         if rhrs:
-            lines.append(f"RHR     mean {_fmt(sum(rhrs)/len(rhrs))} · n={len(rhrs)}/{len(days)}")
+            lines.append(f"RHR     mean {int(round(sum(rhrs)/len(rhrs)))}bpm · n={len(rhrs)}/{len(days)}")
     else:
         lines.append(f"Garmin  coverage 0/{len(days)}")
 

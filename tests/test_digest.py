@@ -21,7 +21,7 @@ class DigestTests(unittest.TestCase):
         text = digest.compose(con)
         self.assertNotIn("Traceback", text)
         self.assertIn("WHO-5", text)
-        self.assertIn("Garmin last 4 days", text)
+        self.assertIn("Last Garmin ingest", text)
 
     def test_compose_with_collected_hrv_none_string(self) -> None:
         con = sqlite3.connect(":memory:")
@@ -33,7 +33,9 @@ class DigestTests(unittest.TestCase):
         )
         text = digest.compose(con)
         self.assertNotIn("Traceback", text)
-        self.assertIn("collected", text)
+        # row is in 2099, outside today's daily/trailing window — renderer must still ship
+        self.assertIn("WHO-5", text)
+        self.assertIn("Last Garmin ingest", text)
 
 
 if __name__ == "__main__":

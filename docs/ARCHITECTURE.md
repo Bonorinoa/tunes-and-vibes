@@ -6,7 +6,7 @@ Three planes. Plane 1 is live. Planes 2–3 wait for archive zips and ≥6–8 w
 
 1. **Live feed** — Spotify `GET /me/player/recently-played` (≤50 items) + Garmin Connect via `garth`/`garminconnect`. Local SQLite. Idempotent append, dedupe on natural keys.
 2. **Archive** — one-time Spotify Extended Streaming History + Garmin account export. Fuzzy join on artist+title; label match confidence; never silently drop.
-3. **Anchor** — WHO-5, all-day Sunday, one-line reply `4 4 3 4 5`. Questions before any digest numbers. Telegram is the delivery surface (no_agent cron). Monday 23:59 is grace for Sunday's week.
+3. **Anchor** — WHO-5, all-day Sunday, one-line reply `4 4 3 4 5`. Questions before any digest numbers. Telegram is the delivery surface (no_agent cron, Sunday 10:00). Monday 23:59 is grace for Sunday's week.
 
 ## Feature join
 

@@ -1,0 +1,5 @@
+﻿week_start,responded_at,i1,i2,i3,i4,i5,raw_total,pct,channel,note
+2026-08-17,2026-08-23T19:16:39+00:00,4,2,2,3,4,15,60.0,manual,test-fire reply (manually stored same day; provenance per labeling-over-dropping rule)
+2026-08-24,2026-08-31T17:47:42+00:00,3,2,4,2,4,15,60.0,desktop,
+2026-08-31,2026-09-06T20:12:03+00:00,4,3,4,3,4,18,72.0,telegram,"telegram session 20260906_131203_ab1db33a; scores 4 3 4 3 4; fridge write lagged (default-profile agent claimed log, did not INSERT)"
+2026-09-07,2026-09-14T18:19:10+00:00,4,2,4,3,4,17,68.0,telegram,"telegram session 20260909_091801_b42dc6b6 msg 23521; scores 4 2 4 3 4; default-profile agent replied 'Your request was not processed' (~12s), no INSERT; rescued from tunes-and-vibes desktop"

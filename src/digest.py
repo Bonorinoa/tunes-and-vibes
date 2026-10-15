@@ -18,6 +18,17 @@ import snapshot  # noqa: E402
 LOCAL_TZ = ZoneInfo("America/Phoenix")
 
 
+def _last_ingest_inline(con: sqlite3.Connection, source: str) -> str:
+    row = con.execute(
+        "SELECT ts, outcome, substr(detail,1,80) FROM ingest_log "
+        "WHERE source=? ORDER BY ts DESC LIMIT 1",
+        (source,),
+    ).fetchone()
+    if not row:
+        return "(none)"
+    return f"{row[0]} · {row[1]} · {row[2]}"
+
+
 def _who5(con: sqlite3.Connection) -> str:
     rows = con.execute(
         "SELECT week_start, pct FROM survey ORDER BY week_start DESC LIMIT 4"
@@ -25,7 +36,7 @@ def _who5(con: sqlite3.Connection) -> str:
     if not rows:
         return "WHO-5: no entries yet — first prompt lands Sunday 08:00."
     lines = ["WHO-5 (pct/100, newest first):"]
-    lines.extend(f"  {w}  {p:g}" for w, p in rows)
+    lines.extend(f"  • {w}  {p:g}" for w, p in rows)
     return "\n".join(lines)
 
 
@@ -60,15 +71,17 @@ def _last_ingest(con: sqlite3.Connection, source: str) -> str:
 
 def compose(con: sqlite3.Connection) -> str:
     today = datetime.now(LOCAL_TZ).strftime("%a %b %d")
-    parts = [f"TUNES & VIBES · {today}", "", _who5(con), ""]
+    parts = [f"**TUNES & VIBES · {today}**", ""]
     try:
         parts.append(snapshot.daily(con))
         parts.append("")
         parts.append(snapshot.weekly(con))
+        parts.append("")
     except Exception:  # noqa: BLE001 - digest must still ship the strip
-        parts.append("snapshot renderer failed:")
+        parts.append("**snapshot renderer failed:**")
         parts.append(traceback.format_exc().strip().splitlines()[-1])
-    parts.extend(["", _garmin_strip(con), _last_ingest(con, "garmin"), _last_ingest(con, "spotify")])
+    parts.append(f"_Last Garmin ingest: {_last_ingest_inline(con, 'garmin')}_")
+    parts.append(f"_Last Spotify ingest: {_last_ingest_inline(con, 'spotify')}_")
     return "\n".join(parts)
 
 

@@ -90,6 +90,67 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(kept["status"], "collected")
         self.assertEqual(kept["sleep_min"], 483.0)
 
+    def test_not_worn_does_not_clobber_collected(self) -> None:
+        existing = {
+            "date": "2026-09-07",
+            "status": "collected",
+            "sleep_min": 400.0,
+            "steps": 8204,
+            "note": None,
+        }
+        incoming = {
+            "date": "2026-09-07",
+            "status": "not_worn",
+            "sleep_min": None,
+            "steps": 0,
+            "note": "api ok · all metrics empty (watch off?)",
+        }
+        kept = g.merge_wellness_row(existing, incoming)
+        self.assertEqual(kept["status"], "collected")
+        self.assertEqual(kept["sleep_min"], 400.0)
+        self.assertEqual(kept["steps"], 8204)
+
+    def test_collected_upgrades_not_worn(self) -> None:
+        existing = {
+            "date": "2026-09-07",
+            "status": "not_worn",
+            "sleep_min": None,
+            "steps": 0,
+            "note": "api ok · all metrics empty (watch off?)",
+        }
+        incoming = {
+            "date": "2026-09-07",
+            "status": "collected",
+            "sleep_min": 384.0,
+            "steps": 8204,
+            "note": None,
+        }
+        kept = g.merge_wellness_row(existing, incoming)
+        self.assertEqual(kept["status"], "collected")
+        self.assertEqual(kept["sleep_min"], 384.0)
+        self.assertEqual(kept["steps"], 8204)
+
+
+class LookbackTests(unittest.TestCase):
+    def test_skips_collected_past_days_always_includes_today(self) -> None:
+        today = __import__("datetime").date(2026, 9, 14)
+        existing = {
+            "2026-09-14": "not_worn",
+            "2026-09-13": "not_worn",
+            "2026-09-12": "collected",
+            "2026-09-11": "not_worn",
+        }
+        days = g.days_needing_pull(existing, today, lookback=4)
+        self.assertEqual(
+            [d.isoformat() for d in days],
+            ["2026-09-14", "2026-09-13", "2026-09-11"],
+        )
+
+    def test_today_is_pulled_even_if_already_collected(self) -> None:
+        today = __import__("datetime").date(2026, 9, 14)
+        days = g.days_needing_pull({"2026-09-14": "collected"}, today, lookback=1)
+        self.assertEqual([d.isoformat() for d in days], ["2026-09-14"])
+
 
 if __name__ == "__main__":
     unittest.main()

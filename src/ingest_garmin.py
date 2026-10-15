@@ -25,6 +25,7 @@ from schema import DB, init  # noqa: E402
 
 TOKEN_STORE = str(ROOT / "auth" / "garmin")
 PROTECTED = frozenset({"collected", "not_worn", "synced_zero"})
+LOOKBACK_DAYS = 14
 STATS_KEEP = (
     "totalSteps",
     "steps",
@@ -150,7 +151,11 @@ def compact_payload(
 
 
 def merge_wellness_row(existing: dict | None, incoming: dict) -> dict:
-    """Keep last-good metrics when a later pull is a transient api_error."""
+    """Keep last-good metrics when a later pull is empty or a transient error.
+
+    collected is sticky against not_worn/api_error. A later collected pull
+    may upgrade not_worn (late Garmin Connect sync).
+    """
     if existing is None:
         return incoming
     if incoming.get("status") == "api_error" and existing.get("status") in PROTECTED:
@@ -158,7 +163,25 @@ def merge_wellness_row(existing: dict | None, incoming: dict) -> dict:
         err = incoming.get("note") or "api_error"
         kept["note"] = f"transient {err}; kept {existing['status']}"
         return kept
+    if incoming.get("status") == "not_worn" and existing.get("status") == "collected":
+        kept = dict(existing)
+        kept["note"] = "later empty poll ignored; kept collected"
+        return kept
     return incoming
+
+
+def days_needing_pull(
+    existing_by_date: dict[str, str],
+    today: date,
+    lookback: int = LOOKBACK_DAYS,
+) -> list[date]:
+    """Today always; past days only if they are not already collected."""
+    out: list[date] = []
+    for i in range(lookback):
+        d = today - timedelta(days=i)
+        if d == today or existing_by_date.get(d.isoformat()) != "collected":
+            out.append(d)
+    return out
 
 
 def collect(client, day: date | None = None) -> tuple[dict, dict]:
@@ -190,79 +213,110 @@ def _load_existing(con: sqlite3.Connection, day: str) -> dict | None:
     return dict(zip((c[0] for c in cur.description), got))
 
 
+COLS = [
+    "date",
+    "status",
+    "sleep_min",
+    "rem_min",
+    "deep_min",
+    "sleep_score",
+    "rhr",
+    "rhr_7d",
+    "bb_charged",
+    "bb_drained",
+    "avg_stress",
+    "spo2_avg",
+    "steps",
+    "active_kcal",
+    "mod_min",
+    "vig_min",
+    "hrv_rmssd",
+    "hrv_status",
+    "note",
+    "raw_json",
+    "ingested_at",
+]
+
+
+def persist_day(
+    con: sqlite3.Connection,
+    day: str,
+    incoming: dict,
+    payload: dict | None,
+) -> dict:
+    incoming = dict(incoming)
+    incoming["date"] = day
+    existing = _load_existing(con, day)
+    row = merge_wellness_row(existing, incoming)
+    accepted_fresh = (
+        incoming.get("status") != "api_error"
+        and row.get("status") == incoming.get("status")
+    )
+    if accepted_fresh:
+        row["raw_json"] = json.dumps(payload or {})
+        row["ingested_at"] = now()
+    elif existing is None:
+        row["raw_json"] = None
+        row["ingested_at"] = now()
+    values = {c: row.get(c) for c in COLS}
+    placeholders = ",".join(f":{c}" for c in COLS)
+    updates = ",".join(f"{c}=excluded.{c}" for c in COLS[1:])
+    con.execute(
+        f"INSERT INTO wellness ({', '.join(COLS)}) VALUES ({placeholders}) "
+        f"ON CONFLICT(date) DO UPDATE SET {updates}",
+        values,
+    )
+    con.execute(
+        "INSERT INTO ingest_log VALUES (?,?,?,?)",
+        (now(), "garmin", incoming["status"], incoming.get("note") or row.get("note") or "ok"),
+    )
+    return row
+
+
 def main() -> int:
     load_dotenv(ROOT / ".env")
     init()
-    today = date.today().isoformat()
-    incoming: dict = {"date": today, "status": "api_error", "note": None}
-    payload: dict = {}
-
+    today = date.today()
+    client = None
+    login_note = None
     try:
         from garminconnect import Garmin
 
         # Non-interactive: blank password fails fast instead of hanging cron.
         client = Garmin(email=os.getenv("GARMIN_EMAIL") or "", password="", prompt_mfa=lambda: "")
         client.login(TOKEN_STORE)
-        data_row, payload = collect(client)
-        incoming.update(data_row)
     except Exception as exc:  # noqa: BLE001 - recorded as a row status, never raised
-        incoming["note"] = f"{type(exc).__name__}: {exc}"
-
-    cols = [
-        "date",
-        "status",
-        "sleep_min",
-        "rem_min",
-        "deep_min",
-        "sleep_score",
-        "rhr",
-        "rhr_7d",
-        "bb_charged",
-        "bb_drained",
-        "avg_stress",
-        "spo2_avg",
-        "steps",
-        "active_kcal",
-        "mod_min",
-        "vig_min",
-        "hrv_rmssd",
-        "hrv_status",
-        "note",
-        "raw_json",
-        "ingested_at",
-    ]
+        login_note = f"{type(exc).__name__}: {exc}"
 
     con = sqlite3.connect(DB)
-    existing = _load_existing(con, today)
-    row = merge_wellness_row(existing, incoming)
-    if row.get("status") != "api_error" or existing is None:
-        # Fresh accept: stamp ingest time + (compact) payload.
-        if incoming.get("status") != "api_error":
-            row["raw_json"] = json.dumps(payload)
-            row["ingested_at"] = now()
-        elif existing is None:
-            row["raw_json"] = None
-            row["ingested_at"] = now()
-    # preserved last-good: keep existing raw_json + ingested_at
+    existing_map = {
+        r[0]: r[1] for r in con.execute("SELECT date, status FROM wellness")
+    }
+    if client is None:
+        persist_day(
+            con,
+            today.isoformat(),
+            {"status": "api_error", "note": login_note},
+            None,
+        )
+        days: list[date] = []
+    else:
+        days = days_needing_pull(existing_map, today)
 
-    values = {c: row.get(c) for c in cols}
-    placeholders = ",".join(f":{c}" for c in cols)
-    updates = ",".join(f"{c}=excluded.{c}" for c in cols[1:])
-    con.execute(
-        f"INSERT INTO wellness ({', '.join(cols)}) VALUES ({placeholders}) "
-        f"ON CONFLICT(date) DO UPDATE SET {updates}",
-        values,
-    )
-    # Log the *attempt* outcome, not the preserved status — forensics live here.
-    con.execute(
-        "INSERT INTO ingest_log VALUES (?,?,?,?)",
-        (now(), "garmin", incoming["status"], incoming.get("note") or row.get("note") or "ok"),
-    )
-    got = con.execute(
-        "SELECT date,status,sleep_min,rem_min,rhr,rhr_7d,hrv_rmssd,hrv_status,"
-        "bb_charged,bb_drained,avg_stress,steps FROM wellness WHERE date=?",
-        (today,),
-    ).fetchone()
+    today_row = None
+    for d in days:
+        try:
+            data_row, payload = collect(client, d)
+            incoming = dict(data_row)
+        except Exception as exc:  # noqa: BLE001
+            incoming = {"status": "api_error", "note": f"{type(exc).__name__}: {exc}"}
+            payload = {}
+        row = persist_day(con, d.isoformat(), incoming, payload)
+        if d == today:
+            today_row = row
+
+    if today_row is None:
+        today_row = _load_existing(con, today.isoformat()) or {"date": today.isoformat(), "status": "api_error"}
     con.commit()
     con.close()
 
@@ -280,7 +334,7 @@ def main() -> int:
         "avg_stress",
         "steps",
     ]
-    print("garmin ingest:", dict(zip(keys, got)))
+    print("garmin ingest:", {k: today_row.get(k) for k in keys})
     return 0
 
 

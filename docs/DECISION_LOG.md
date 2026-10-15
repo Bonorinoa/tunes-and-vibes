@@ -2,6 +2,22 @@
 
 Living file. Newest first.
 
+## 2026-08-31 — on-command HTML board (coverage, not Streamlit)
+
+Intent: inspect the fridge without a new stack. `src/board.py` reads SQLite → `logs/board.html`. Cream page, dark ink, no new metrics, no emotion labels. Streamlit parked until the series is actually interesting.
+
+## 2026-08-31 — digest/WHO-5 moved to 10:00 / 10:15
+
+Laptop is rarely awake at 8am. Delivery, not collection: `tv-who5` Sunday 10:00, `tv-digest` daily 10:15 (after 10:07 ingest). `tv-ingest` stays `7 */2 * * *`. Collection window unchanged (all-day Sunday + Monday grace). Hermes catch-up still fires once on wake if a slot was missed; it does not replay every skipped 2h poll.
+
+## 2026-08-31 — official WHO-5 week 1 + Spotify ingest unstick
+
+Intent before compute: store Augusto's Sunday instrument (arrived Monday grace, desktop chat), then unstick live Spotify ingest. No new metrics, no `weekly` table, no VPS.
+
+1. **WHO-5 week `2026-08-24`** — reply `3 2 4 2 4` → 15 raw / 60 pct. Channel `desktop`. Test-fire week `2026-08-17` stays labeled.
+2. **Named-column inserts** — `tracks.not_found` (27 Aug) made positional `INSERT INTO tracks VALUES (?,?,?,?,?)` crash every poll since 27 Aug 23:07 UTC. Cron copy of `tv_ingest_all.sh` lacked `pipefail`, so heartbeat printed the traceback with `spotify(0)` and job status `ok`. Fix: named inserts + tests that ALTER an extra column; point cron ingest at the repo script (digest already does this).
+3. **Paginate `recently-played`** — 6h/day listening overflows the 50-item page inside the 24h window whenever a poll is missed (sleep, crash). Walk `before` cursor up to 200 items. Still cannot recover >24h; Aug 28–30 live gap is gone until ESH.
+
 ## 2026-08-27 — foundation audit punch list (landed)
 
 Intent before compute: keep the fridge, no new metrics. Commit the uncommitted 0.1.2 scar tissue (last-good Garmin, digest-from-SQLite, ReccoBeats `not_found`, tests) plus three correctness patches before Sunday's first official WHO-5.

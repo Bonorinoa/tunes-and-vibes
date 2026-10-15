@@ -3,8 +3,8 @@
 Parked on purpose. Do not invent metrics to fill this list.
 
 ## Settled
-- Sunday prompt hour: 08:00 (delivery). Collection window remains all-day Sunday + Monday grace.
-- Daily snapshots surface in the 08:15 Telegram digest.
+- Sunday prompt hour: 10:00 (delivery; moved from 08:00 on 31 Aug — laptop rarely awake at 8am). Collection window remains all-day Sunday + Monday grace.
+- Daily snapshots surface in the 10:15 Telegram digest (after the 10:07 ingest).
 - Telegram `/sethome` done. Bot is the delivery surface.
 - Garmin login done. Re-auth is manual `src/garmin_login.py`.
 - Project venv, not conda.

@@ -2,7 +2,7 @@
 
 n=1 panel: weekly WHO-5 + passive Spotify listening + Garmin vivoactive 5.
 
-**Status:** live fridge. Ingest every 2h (`tv-ingest` on the default Hermes profile), digest 08:15 Telegram, WHO-5 Sunday 08:00. Official WHO-5 series starts Sunday 2026-08-30. The 2026-08-17 row is a labeled test-fire (60/100).
+**Status:** live fridge. Ingest every 2h (`tv-ingest` on the default Hermes profile), digest 10:15 Telegram, WHO-5 Sunday 10:00. Official WHO-5 series started Sunday 2026-08-30 (week `2026-08-24` stored Monday grace). The 2026-08-17 row is a labeled test-fire (60/100).
 
 ## What this is
 

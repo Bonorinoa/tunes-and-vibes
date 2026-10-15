@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.1.5 — 2026-08-31
+
+- On-command coverage board: `src/board.py` → `logs/board.html` (cream page, dark ink). No Streamlit.
+
+## 0.1.4 — 2026-08-31
+
+- Official WHO-5 week `2026-08-24` stored (3 2 4 2 4 → 60/100). Test-fire 17 Aug kept.
+- Spotify ingest: named-column inserts (schema growth can no longer crash the poll); paginate `recently-played` up to 200 items; failures write `ingest_log` instead of dying silent.
+- Cron `tv-ingest` wrapper now execs the repo script (same pattern as digest), so `pipefail` is real.
+
 ## 0.1.3 — 2026-08-27
 
 - WHO-5 Monday grace stores on Sunday's ISO week (`week_start` 31 Aug → 24 Aug).
