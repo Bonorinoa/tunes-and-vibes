@@ -2,6 +2,10 @@
 
 Living file. Newest first.
 
+## 2026-10-15 — WHO-5 Monday catch-up (`tv-who5-catchup`)
+
+Intent: no lost week, no new metrics. On 2026-10-11 the Sunday survey never reached Telegram: the live adapter was degraded, the standalone fallback hit `httpx.ConnectError`, and the queued redelivery never fired (known upstream bugs NousResearch/hermes-agent #123898, #127187). Augusto noticed and answered by hand on Monday (`channel=manual`), so week 2026-10-05 is stored. Fix: `scripts/who5_catchup.sh`, a no_agent cron on Monday 12:00 (inside the Monday grace window). If last week's `survey` row exists it prints nothing, so nothing is sent. If the row is missing it sends one reminder line plus the frozen survey text, reused from `tv_who5_survey.sh` rather than copied. An unreadable DB prints a loud one-liner. Questions-before-data still holds: the reminder carries no panel data. Tests: `tests/test_who5_catchup.py` (3 pass). Coverage audit, same day: WHO-5 has 8/8 weeks (2026-08-17 → 2026-10-05). Wellness has 53/53 days since 2026-08-24. Spotify is daily except the known Aug 28–30 gap. The ingest errors are short network drops, and the next 2-hourly run recovers from each one.
+
 ## 2026-08-31 — on-command HTML board (coverage, not Streamlit)
 
 Intent: inspect the fridge without a new stack. `src/board.py` reads SQLite → `logs/board.html`. Cream page, dark ink, no new metrics, no emotion labels. Streamlit parked until the series is actually interesting.
